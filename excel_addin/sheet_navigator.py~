@@ -1,0 +1,53 @@
+import xlwings as xw
+import tkinter as tk
+
+def get_sheet_names():
+    wb=xw.books.active
+    sheet_list= [ sheet.name for sheet in wb.sheets]
+    return sheet_list
+
+def show_gui():
+    #메인 윈도우 셋업
+    root=tk.Tk()
+    root.title("Sheet Navigator")
+    root.geometry("300x400")
+    root.attributes('-topmost', True) # 항상 위에 표시
+
+    #2. 타이틀 라벨 (UI 상단)
+    lbl_title = tk.Label(root, text="현재 엑셀 시트 목록", font = ("Arial", 14, "bold"))
+    lbl_title.pack(pady=10) #pady는 위 아래 여백을 의미함.
+
+    #3. 리스트와 스크롤바를 담을 '프레임' 만들기
+    #리스트 박스와 스크롤바를 묶어서 배치하기 위해 Frame을 사용함
+    list_frame=tk.Frame(root)
+    list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
+
+    #4. 스크롤바 생성 (프레임 안의 오른쪽에 배치)
+    scrollbar = tk.Scrollbar(list_frame)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    #5. 리스트박스 생성 (프레임 안의 왼쪽에 배치)
+    listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, font=("Arial", 12, "bold"))
+    listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # 스크롤바와 리스트박스 동작 연결
+    scrollbar.config(command=listbox.yview)
+
+    #6. 엑셀에서 시트 이름들을 가져와서 리스트박스에 하나씩 집어넣기
+    try:
+        sheets=get_sheet_names()
+        for name in sheets:
+            listbox.insert(tk.END, name)
+    except Exception as e:
+        listbox.insert(tk.END, "Excel does not exist")
+        print(e)
+
+    #GUI Run
+    root.mainloop()
+
+def main():
+    show_gui()
+
+if __name__ == "__main__":
+    xw.Book("testwb.xlsm").set_mock_caller()
+    main()

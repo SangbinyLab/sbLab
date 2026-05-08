@@ -2,13 +2,13 @@ import xlwings as xw
 import tkinter as tk
 import json
 import os
+from tkinter import messagebox
+from PIL import Image, ImageTk
 
 # --- 🎯 추가된 기능 1: 즐겨찾기 데이터 저장/불러오기 ---
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# 그 폴더 경로 뒤에 'favorites.json'을 정확하게 붙여줍니다.
 FAV_FILE = os.path.join(BASE_DIR, "favorites.json")
+
 def load_favorites():
     """저장된 즐겨찾기 목록을 불러옵니다."""
     if os.path.exists(FAV_FILE):
@@ -55,18 +55,59 @@ def goto_selected_sheet(event):
 
 def show_gui():
     root = tk.Tk()
-    root.title("Sheet Navigator")
+    root.title("Sangbin's LAB")
     root.geometry("300x400")
     root.attributes('-topmost', True) 
     
-    lbl_title = tk.Label(root, text="📑 시트 검색 및 즐겨찾기", font=("Arial", 14, "bold"))
-    lbl_title.pack(pady=10)
+    # 1. 헤더 프레임 (타이틀과 로고)
+    header_frame = tk.Frame(root)
+    header_frame.pack(fill=tk.X, padx=15, pady=10)
 
+    # 2. 🎯 텍스트 타이틀 대신 'vivid.png' 이미지 불러오기 (왼쪽 배치)
+    vivid_path = os.path.join(BASE_DIR, "vivid1.png")
+    try:
+        pil_vivid = Image.open(vivid_path)
+        # 가로로 긴 텍스트 이미지이므로 가로 200, 세로 40 정도로 최대 크기 제한
+        pil_vivid.thumbnail((210, 50), Image.Resampling.LANCZOS)
+        img_vivid = ImageTk.PhotoImage(pil_vivid)
+        
+        lbl_vivid = tk.Label(header_frame, image=img_vivid)
+        lbl_vivid.image = img_vivid # 가비지 컬렉터 방지
+        lbl_vivid.pack(side=tk.LEFT, pady=(5,0)) 
+    except Exception as e:
+        print("Vivid 타이틀 이미지를 찾을 수 없습니다:", e)
+
+    # 3. 로고 이미지 불러오기 (오른쪽 배치)
+    logo_path = os.path.join(BASE_DIR, "logo.png")
+    try:
+        pil_logo = Image.open(logo_path)
+        pil_logo.thumbnail((50, 50), Image.Resampling.LANCZOS)
+        img_logo = ImageTk.PhotoImage(pil_logo)
+        
+        lbl_logo = tk.Label(header_frame, image=img_logo)
+        lbl_logo.image = img_logo # 가비지 컬렉터 방지
+        lbl_logo.pack(side=tk.RIGHT)
+        
+    except Exception as e:
+        error_details = f"이미지를 불러오는 데 실패했습니다.\n\n[확인된 경로]\n{logo_path}\n\n[에러 내용]\n{e}"
+        messagebox.showwarning("로고 로드 에러", error_details)
+    
+    # --- 🎯 4. 검색 영역 프레임 분리 (Search 글자와 입력창을 한 줄에 배치) ---
+    search_frame = tk.Frame(root)
+    search_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
+    
+    # "Search" 글자를 입력창 왼쪽에 배치
+    lbl_search = tk.Label(search_frame, text="Search", font=("Arial", 15, "bold"))
+    lbl_search.pack(side=tk.LEFT, padx=(0, 5)) # 입력창과의 간격을 위해 오른쪽(padx) 여백 5 추가
+    
+    # 검색 입력창 설정 (expand=True를 통해 남은 가로 공간을 모두 채움)
     search_var = tk.StringVar()
-    search_entry = tk.Entry(root, textvariable=search_var, font=("Arial", 12))
-    search_entry.pack(fill=tk.X, padx=15, pady=(0, 10))
+    search_entry = tk.Entry(search_frame, textvariable=search_var, font=("Arial", 12))
+    search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
     search_entry.focus()
+    # -------------------------------------------------------------------------
 
+    # 5. 리스트 영역
     list_frame = tk.Frame(root)
     list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
 
@@ -77,39 +118,33 @@ def show_gui():
     listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     scrollbar.config(command=listbox.yview)
 
-    # --- 🎯 추가된 기능 2: 우클릭 팝업 메뉴 만들기 ---
+    # --- 우클릭 팝업 메뉴 만들기 ---
     popup_menu = tk.Menu(root, tearoff=0)
     
     def toggle_favorite():
         selection = listbox.curselection()
         if not selection: return
         
-        # 선택된 항목의 순수 시트 이름 추출
         sheet_name = listbox.get(selection[0]).replace("⭐ ", "")
         
-        # 즐겨찾기 토글 (있으면 빼고, 없으면 넣기)
         if sheet_name in favorites:
             favorites.remove(sheet_name)
         else:
             favorites.add(sheet_name)
             
-        save_favorites(favorites) # 파일에 즉시 저장
-        update_listbox()          # 화면 즉시 새로고침
+        save_favorites(favorites)
+        update_listbox()
 
     popup_menu.add_command(label="⭐ 즐겨찾기 등록/해제", command=toggle_favorite)
 
     def show_context_menu(event):
-        """우클릭 시 메뉴를 마우스 위치에 띄우는 함수"""
-        # 우클릭한 위치의 리스트 항목을 자동으로 선택 상태로 만듭니다.
         nearest_index = listbox.nearest(event.y)
         listbox.selection_clear(0, tk.END)
         listbox.selection_set(nearest_index)
         listbox.activate(nearest_index)
-        
-        # 팝업 메뉴 띄우기
         popup_menu.tk_popup(event.x_root, event.y_root)
-    # ------------------------------------------------
 
+    # --- 리스트 업데이트 로직 ---
     def update_listbox(*args):
         try:
             current_sheets = get_sheet_names()
@@ -120,11 +155,9 @@ def show_gui():
             else:
                 filtered = current_sheets
                 
-            # 🎯 추가된 기능 3: 리스트 정렬 (즐겨찾기를 위로, 나머지를 아래로)
             fav_list = [s for s in filtered if s in favorites]
             normal_list = [s for s in filtered if s not in favorites]
             
-            # 최종적으로 GUI에 표시할 텍스트 리스트 생성
             display_list = ["⭐ " + s for s in fav_list] + normal_list
             
             gui_sheets = list(listbox.get(0, tk.END))
@@ -138,15 +171,16 @@ def show_gui():
         except:
             pass
             
+    # 이벤트 바인딩
     search_var.trace_add('write', update_listbox)
     listbox.bind('<Double-Button-1>', goto_selected_sheet) 
     listbox.bind('<Return>', goto_selected_sheet)
     search_entry.bind('<Return>', lambda event: goto_selected_sheet(tk.Event()) if listbox.curselection() else None)
 
-    # 맥 OS는 우클릭이 <Button-2> 또는 <Button-3>으로 인식될 수 있어 둘 다 연결해 둡니다.
     listbox.bind('<Button-2>', show_context_menu)
     listbox.bind('<Button-3>', show_context_menu)
 
+    # 폴링 타이머
     def polling_timer():
         update_listbox()
         root.after(1000, polling_timer)

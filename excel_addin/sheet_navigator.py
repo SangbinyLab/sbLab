@@ -34,7 +34,7 @@ def get_sheet_names():
         return [sheet.name for sheet in wb.sheets]
     except Exception as e:
         return []
-
+"""
 def goto_selected_sheet(event):
     listbox = event.widget
     selection = listbox.curselection()
@@ -52,7 +52,31 @@ def goto_selected_sheet(event):
         wb.sheets[sheet_name].activate() 
     except Exception as e:
         print(f"시트 이동 중 에러 발생: {e}")
+"""
+def goto_selected_sheet(event):
+    listbox = event.widget
+    root = listbox.winfo_toplevel() # 현재 켜져 있는 GUI 최상위 창(root) 객체 가져오기
+    
+    selection = listbox.curselection()
+    if not selection:
+        return 
 
+    index = selection[0]
+    raw_text = listbox.get(index)
+    sheet_name = raw_text.replace("⭐ ", "")
+    
+    try:
+        # 🎯 핵심 1: 엑셀을 건드리기 직전에 파이썬 창의 '항상 위' 속성을 잠시 해제합니다.
+        root.attributes('-topmost', False)
+        
+        wb = xw.books.active
+        wb.sheets[sheet_name].activate() 
+        
+        # 🎯 핵심 2: 엑셀 시트 이동이 완료되면 다시 파이썬 창을 '항상 위'로 돌려놓습니다.
+        root.attributes('-topmost', True)
+        
+    except Exception as e:
+        print(f"시트 이동 중 에러 발생: {e}")
 def show_gui():
     root = tk.Tk()
     root.title("Sangbin's LAB")
@@ -192,5 +216,5 @@ def main():
     show_gui()
 
 if __name__ == "__main__":
-    xw.Book("testwb.xlsm").set_mock_caller()
+    #xw.Book("testwb.xlsm").set_mock_caller()
     main()
